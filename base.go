@@ -262,8 +262,10 @@ func (j *jmessages) parseJSON(data []byte) error {
 
 // jmessage is the transmission format of a protocol message.
 type jmessage struct {
-	V  string          `json:"jsonrpc"`      // must be Version
-	ID json.RawMessage `json:"id,omitempty"` // may be nil
+	// OVSDB - jrpcv1 doesn't contain the version string
+	//V  string          `json:"jsonrpc"`      // must be Version
+	V  string          `json:"jsonrpc,omitempty"` // may be nil
+	ID json.RawMessage `json:"id,omitempty"`      // may be nil
 
 	// Fields belonging to request or notification objects
 	M string          `json:"method,omitempty"`

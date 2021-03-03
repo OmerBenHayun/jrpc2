@@ -1,5 +1,12 @@
 # jrpc2
 
+## Note: 
+The is a fork of https://github.com/creachadair/jrpc2.
+
+We added several small changes into the original implementation in order to allow to OVNDB clients, which use jrpcv1 
+protocol to communicate with this jrpcv2 server.
+These proprietary changes have the `OVSDB` comment tag.
+
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/creachadair/jrpc2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/creachadair/jrpc2)](https://goreportcard.com/report/github.com/creachadair/jrpc2)
 
