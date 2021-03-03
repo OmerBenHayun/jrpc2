@@ -162,8 +162,13 @@ func (c *Client) req(ctx context.Context, method string, params interface{}) (*j
 	defer c.mu.Unlock()
 	id := json.RawMessage(strconv.FormatInt(c.nextID, 10))
 	c.nextID++
+	// OVSDB - jrpcv1 doesn't contain the version string
+	version := ""
+	if(!c.allow1) {
+		version = Version
+	}
 	return &jmessage{
-		V:  Version,
+		V:   version,
 		ID: id,
 		M:  method,
 		P:  bits,

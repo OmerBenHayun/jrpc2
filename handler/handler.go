@@ -58,6 +58,14 @@ type ServiceMap map[string]jrpc2.Assigner
 func (m ServiceMap) Assign(ctx context.Context, method string) jrpc2.Handler {
 	parts := strings.SplitN(method, ".", 2)
 	if len(parts) == 1 {
+		// OVSDB - OVSDB methods don't contain type, and start from lower case letter.
+		// TODO add "Ovsdb" as a config parameter
+		if ass, ok := m["Ovsdb"]; ok {
+			startLetter := method[:1]
+			startLetter = strings.ToUpper(startLetter)
+			method = startLetter + method[1:]
+			return ass.Assign(ctx, method)
+		}
 		return nil
 	} else if ass, ok := m[parts[0]]; ok {
 		return ass.Assign(ctx, parts[1])
