@@ -352,8 +352,9 @@ func (j *jmessage) isRequestOrNotification() bool { return j.E == nil && j.R == 
 // isNotification reports whether j is a notification
 func (j *jmessage) isNotification() bool { return j.isRequestOrNotification() && fixID(j.ID) == nil }
 
+// OVSDB, JRPC v1 error message contains only string
 type jerror struct {
-	C int32           `json:"code"`
+	C int32           `json:"code,omitempty"`
 	M string          `json:"message,omitempty"`
 	D json.RawMessage `json:"data,omitempty"`
 }
