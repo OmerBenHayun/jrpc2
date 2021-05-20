@@ -36,9 +36,11 @@ func (e Error) UnmarshalData(v interface{}) error {
 	return json.Unmarshal([]byte(e.data), v)
 }
 
+// OVSDB, in JRPCv1 error contains only message
 // MarshalJSON implements the json.Marshaler interface for Error values.
 func (e Error) MarshalJSON() ([]byte, error) {
-	return json.Marshal(jerror{C: int32(e.code), M: e.message, D: e.data})
+	//return json.Marshal(jerror{C: int32(e.code), M: e.message, D: e.data})
+	return json.Marshal(jerror{M: e.message})
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface for Error values.
