@@ -355,7 +355,7 @@ func (j *jmessage) isNotification() bool { return j.isRequestOrNotification() &&
 // OVSDB, JRPC v1 error message contains only string
 type jerror struct {
 	C int32           `json:"code,omitempty"`
-	M string          `json:"message,omitempty"`
+	M string          `json:"error,omitempty"`
 	D json.RawMessage `json:"data,omitempty"`
 }
 
