@@ -348,6 +348,9 @@ func (s *Server) invoke(base context.Context, h Handler, req *Request) (json.Raw
 		}
 		return nil, err // a call reporting an error
 	}
+	if v == nil {
+		return nil, nil
+	}
 	return json.Marshal(v)
 }
 
@@ -699,7 +702,10 @@ func (ts tasks) responses(rpcLog RPCLogger) jmessages {
 			rsp.ID = json.RawMessage("null")
 		}
 		if task.err == nil {
-			rsp.R = task.val
+			if task.val != nil {
+				rsp.R = task.val
+			}
+
 		} else if e, ok := task.err.(*Error); ok {
 			rsp.E = e
 		} else if c := code.FromError(task.err); c != code.NoError {
