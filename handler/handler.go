@@ -16,10 +16,10 @@ import (
 )
 
 // A Func adapts a function having the correct signature to a jrpc2.Handler.
-type Func func(context.Context, *jrpc2.Request) (interface{}, error)
+type Func func(context.Context, *jrpc2.Request) (interface{}, func(), error)
 
 // Handle implements the jrpc2.Handler interface by calling m.
-func (m Func) Handle(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
+func (m Func) Handle(ctx context.Context, req *jrpc2.Request) (interface{}, func(), error) {
 	return m(ctx, req)
 }
 
@@ -139,7 +139,7 @@ func newHandler(fn interface{}) (Func, error) {
 
 	// Special case: If fn has the exact signature of the Handle method, don't do
 	// any (additional) reflection at all.
-	if f, ok := fn.(func(context.Context, *jrpc2.Request) (interface{}, error)); ok {
+	if f, ok := fn.(func(context.Context, *jrpc2.Request) (interface{}, func(), error)); ok {
 		return Func(f), nil
 	}
 
@@ -195,33 +195,33 @@ func newHandler(fn interface{}) (Func, error) {
 	}
 
 	// Construct a function to decode the result values.
-	var decodeOut func([]reflect.Value) (interface{}, error)
+	var decodeOut func([]reflect.Value) (interface{}, func(), error)
 
 	switch typ.NumOut() {
 	case 1:
 		if typ.Out(0) == errType {
 			// A function that returns only error: Result is always nil.
-			decodeOut = func(vals []reflect.Value) (interface{}, error) {
+			decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
 				oerr := vals[0].Interface()
 				if oerr != nil {
-					return nil, oerr.(error)
+					return nil, nil, oerr.(error)
 				}
-				return nil, nil
+				return nil, nil, nil
 			}
 		} else {
 			// A function that returns a single non-error: err is always nil.
-			decodeOut = func(vals []reflect.Value) (interface{}, error) {
-				return vals[0].Interface(), nil
+			decodeOut = func(vals []reflect.Value) (interface{}, func(),error) {
+				return vals[0].Interface(), nil, nil
 			}
 		}
 	default:
 		// A function that returns a value and an error.
-		decodeOut = func(vals []reflect.Value) (interface{}, error) {
+		decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
 			out, oerr := vals[0].Interface(), vals[1].Interface()
 			if oerr != nil {
-				return nil, oerr.(error)
+				return nil, nil, oerr.(error)
 			}
-			return out, nil
+			return out, nil, nil
 		}
 	}
 
@@ -231,10 +231,10 @@ func newHandler(fn interface{}) (Func, error) {
 		call = f.CallSlice
 	}
 
-	return Func(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
+	return Func(func(ctx context.Context, req *jrpc2.Request) (interface{}, func(),error) {
 		rest, ierr := newinput(req)
 		if ierr != nil {
-			return nil, ierr
+			return nil, nil, ierr
 		}
 		args := append([]reflect.Value{reflect.ValueOf(ctx)}, rest...)
 		return decodeOut(call(args))
