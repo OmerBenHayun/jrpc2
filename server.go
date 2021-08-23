@@ -222,7 +222,7 @@ func (s *Server) dispatch(next jmessages, ch channel.Sender) func() error {
 				if t.hreq.IsNotification() {
 					defer s.nbar.Done()
 				}
-				t.val, t.err = s.invoke(t.ctx, t.m, t.hreq)
+				t.val, t.callBack, t.err = s.invoke(t.ctx, t.m, t.hreq)
 			}
 			if i < last {
 				go run()
@@ -233,7 +233,17 @@ func (s *Server) dispatch(next jmessages, ch channel.Sender) func() error {
 
 		// Wait for all the handlers to return, then deliver any responses.
 		wg.Wait()
-		return s.deliver(tasks.responses(s.rpcLog), ch, time.Since(start))
+		err :=  s.deliver(tasks.responses(s.rpcLog), ch, time.Since(start))
+		if err != nil {
+			return err
+		}
+		// OVSDB add callback function
+		for _, ts := range tasks {
+			if ts.callBack != nil {
+				ts.callBack()
+			}
+		}
+		return nil
 	}
 }
 
@@ -332,26 +342,27 @@ func (s *Server) setContext(t *task, id string) bool {
 
 // invoke invokes the handler m for the specified request type, and marshals
 // the return value into JSON if there is one.
-func (s *Server) invoke(base context.Context, h Handler, req *Request) (json.RawMessage, error) {
+func (s *Server) invoke(base context.Context, h Handler, req *Request) (json.RawMessage, func(), error) {
 	ctx := context.WithValue(base, serverKey{}, s)
 	if err := s.sem.Acquire(ctx, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer s.sem.Release(1)
 
 	s.rpcLog.LogRequest(ctx, req)
-	v, err := h.Handle(ctx, req)
+	v, callBack, err := h.Handle(ctx, req)
 	if err != nil {
 		if req.IsNotification() {
 			s.log("Discarding error from notification to %q: %v", req.Method(), err)
-			return nil, nil // a notification
+			return nil, nil, nil // a notification
 		}
-		return nil, err // a call reporting an error
+		return nil, nil, err // a call reporting an error
 	}
 	if v == nil {
-		return nil, nil
+		return nil, callBack, nil
 	}
-	return json.Marshal(v)
+	retValue, err := json.Marshal(v)
+	return retValue, callBack, err
 }
 
 // ServerInfo returns an atomic snapshot of the current server info for s.
@@ -676,6 +687,9 @@ type task struct {
 
 	val json.RawMessage // the result value (when complete)
 	err error           // the error value (when complete)
+
+	//OVSDB
+	callBack func()     // ovsdb extension, the callback called by the server, after sending response data
 }
 
 type tasks []*task
