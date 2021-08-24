@@ -214,7 +214,7 @@ func newHandler(fn interface{}) (Func, error) {
 				return vals[0].Interface(), nil, nil
 			}
 		}
-	default:
+	case 2:
 		// A function that returns a value and an error.
 		decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
 			out, oerr := vals[0].Interface(), vals[1].Interface()
@@ -222,6 +222,20 @@ func newHandler(fn interface{}) (Func, error) {
 				return nil, nil, oerr.(error)
 			}
 			return out, nil, nil
+		}
+	default:
+		// A function that returns a value, function and an error.(case 3) FIXME edit this comment
+		decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
+			out,ofunc, oerr := vals[0].Interface(), vals[1].Interface(), vals[2].Interface()
+			if oerr != nil {
+				return nil, nil, oerr.(error)
+			}
+			var f func()
+			f,ok := ofunc.(func())
+			if !ok{
+				return nil, nil, fmt.Errorf("second argument is not a function")
+			}
+			return out, f, nil
 		}
 	}
 
