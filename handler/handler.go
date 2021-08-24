@@ -247,7 +247,7 @@ func checkFunctionType(fn interface{}) (reflect.Type, error) {
 		return nil, errors.New("not a function")
 	} else if np := typ.NumIn(); np == 0 || np > 2 {
 		return nil, errors.New("wrong number of parameters")
-	} else if no := typ.NumOut(); no < 1 || no > 2 {
+	} else if no := typ.NumOut(); no < 1 || no > 3 {
 		return nil, errors.New("wrong number of results")
 	} else if typ.In(0) != ctxType {
 		return nil, errors.New("first parameter is not context.Context")
