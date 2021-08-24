@@ -90,6 +90,7 @@ func (m ServiceMap) Names() []string {
 //    func(context.Context, ...X) (Y, error)
 //    func(context.Context, *jrpc2.Request) (Y, error)
 //    func(context.Context, *jrpc2.Request) (interface{}, error)
+//    func(context.Context, *jrpc2.Request) (interface{},func() , error)
 //
 // for JSON-marshalable types X and Y. New will panic if the type of fn does
 // not have one of these forms.  The resulting method will handle encoding and
@@ -210,11 +211,11 @@ func newHandler(fn interface{}) (Func, error) {
 			}
 		} else {
 			// A function that returns a single non-error: err is always nil.
-			decodeOut = func(vals []reflect.Value) (interface{}, func(),error) {
+			decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
 				return vals[0].Interface(), nil, nil
 			}
 		}
-	default:
+	case 2:
 		// A function that returns a value and an error.
 		decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
 			out, oerr := vals[0].Interface(), vals[1].Interface()
@@ -222,6 +223,20 @@ func newHandler(fn interface{}) (Func, error) {
 				return nil, nil, oerr.(error)
 			}
 			return out, nil, nil
+		}
+	default:
+		// A function that returns a value, a callback function and an error.
+		decodeOut = func(vals []reflect.Value) (interface{}, func(), error) {
+			out, ofunc, oerr := vals[0].Interface(), vals[1].Interface(), vals[2].Interface()
+			if oerr != nil {
+				return nil, nil, oerr.(error)
+			}
+			var f func()
+			f, ok := ofunc.(func())
+			if !ok {
+				return nil, nil, fmt.Errorf("second argument is not a function")
+			}
+			return out, f, nil
 		}
 	}
 
@@ -231,7 +246,7 @@ func newHandler(fn interface{}) (Func, error) {
 		call = f.CallSlice
 	}
 
-	return Func(func(ctx context.Context, req *jrpc2.Request) (interface{}, func(),error) {
+	return Func(func(ctx context.Context, req *jrpc2.Request) (interface{}, func(), error) {
 		rest, ierr := newinput(req)
 		if ierr != nil {
 			return nil, nil, ierr
@@ -247,7 +262,7 @@ func checkFunctionType(fn interface{}) (reflect.Type, error) {
 		return nil, errors.New("not a function")
 	} else if np := typ.NumIn(); np == 0 || np > 2 {
 		return nil, errors.New("wrong number of parameters")
-	} else if no := typ.NumOut(); no < 1 || no > 2 {
+	} else if no := typ.NumOut(); no < 1 || no > 3 {
 		return nil, errors.New("wrong number of results")
 	} else if typ.In(0) != ctxType {
 		return nil, errors.New("first parameter is not context.Context")
